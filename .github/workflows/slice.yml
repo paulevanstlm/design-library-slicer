@@ -1,13 +1,13 @@
 name: Slice screenshots
 
-# Cuts full-page screenshots into modules for the Toro design library. The library's Worker triggers this with
-# repository_dispatch as soon as captures land; the hourly schedule is a safety net.
+# Cuts full-page screenshots into modules for the Toro design library. Runs every 10 minutes: when there's no work it
+# finishes in seconds; when there is, it keeps slicing until the queue is empty (up to 25 minutes a run).
 # Public repo so Actions minutes are free. Code only: no keys, images or data live here.
 on:
-  repository_dispatch:
-    types: [slice]
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/10 * * * *"
+    # Monthly keep-alive: GitHub pauses scheduled workflows in a repo with no commits for 60 days.
+    - cron: "0 3 1 * *"
   workflow_dispatch:
 
 concurrency:
@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   slice:
+    if: github.event.schedule != '0 3 1 * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,3 +34,16 @@ jobs:
         env:
           WORKER_URL: ${{ vars.WORKER_URL || 'https://design-library.paul-evans.workers.dev' }}
           PIPELINE_SHARED_SECRET: ${{ secrets.PIPELINE_SHARED_SECRET }}
+
+  keepalive:
+    if: github.event.schedule == '0 3 1 * *'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "Keep-alive: stops GitHub pausing the schedule after 60 quiet days"
+          git push
