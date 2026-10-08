@@ -22,6 +22,12 @@ jobs:
     if: github.event.schedule != '0 3 1 * *'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Five runners share the queue (each leases its own pages), so a big backlog clears about five times faster.
+    # With no work, each finishes in seconds.
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [0, 1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,6 +40,8 @@ jobs:
         env:
           WORKER_URL: ${{ vars.WORKER_URL || 'https://design-library.paul-evans.workers.dev' }}
           PIPELINE_SHARED_SECRET: ${{ secrets.PIPELINE_SHARED_SECRET }}
+          RUNNER_INDEX: ${{ matrix.runner }}
+          SLICE_THREADS: "6"
 
   keepalive:
     if: github.event.schedule == '0 3 1 * *'

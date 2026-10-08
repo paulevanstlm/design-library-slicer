@@ -161,10 +161,12 @@ def backfill_hashes():
 
 
 def main():
-    try:
-        backfill_hashes()
-    except Exception as e:
-        print(f"hash backfill failed: {e}", file=sys.stderr)
+    # Several runners share the queue (each leases its own pages); only the first does the one-off fingerprint catch-up.
+    if os.environ.get("RUNNER_INDEX", "0") == "0":
+        try:
+            backfill_hashes()
+        except Exception as e:
+            print(f"hash backfill failed: {e}", file=sys.stderr)
     # Keep taking work until the queue is empty or the run is near its 30-minute timeout.
     deadline = time.time() + 25 * 60
     failed = 0
@@ -182,7 +184,7 @@ def main():
 
 
 # Pages slice in parallel: most of each page's time is waiting on downloads and uploads, not pixel work.
-PARALLEL = 4
+PARALLEL = int(os.environ.get("SLICE_THREADS", "6"))
 
 
 def slice_one(job):
