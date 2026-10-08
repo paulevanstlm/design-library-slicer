@@ -176,9 +176,9 @@ def main():
         total += len(jobs)
         print(f"{len(jobs)} capture(s) to slice")
         failed += slice_all(jobs)
-    print(f"done: {total} capture(s) this run")
-    if failed:
-        sys.exit(1)
+    # Pages that failed are reported back to the library, which retries them; that isn't a failed run (and shouldn't
+    # email anyone). Only a crash of the slicer itself fails the run.
+    print(f"done: {total} capture(s) this run, {failed} reported back as failed")
 
 
 # Pages slice in parallel: most of each page's time is waiting on downloads and uploads, not pixel work.
