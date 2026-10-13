@@ -172,7 +172,18 @@ def main():
     failed = 0
     total = 0
     while time.time() < deadline:
-        jobs = json.loads(call("GET", "/api/pipeline/slice-jobs"))
+        # The library not answering (mid-deploy, a slow moment) isn't a slicer failure: stop quietly, the next run in
+        # 10 minutes picks the work up. A wrong secret (401/403) still fails the run so it gets noticed.
+        try:
+            jobs = json.loads(call("GET", "/api/pipeline/slice-jobs"))
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            print(f"library answered HTTP {e.code}; stopping this run", file=sys.stderr)
+            break
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            print(f"library didn't answer ({e}); stopping this run", file=sys.stderr)
+            break
         if not jobs:
             break
         total += len(jobs)
